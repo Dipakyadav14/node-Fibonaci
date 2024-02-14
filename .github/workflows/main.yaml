@@ -51,7 +51,7 @@ jobs:
         uses: azure/k8s-bake@v2
         with:
           renderEngine: helm
-          helmChart: .assignment/node-fibonacci/K8s/helm-poc/
+          helmChart: ./assignment/node-fibonacci/K8s/helm-poc/
           helm-version: latest
         id: bake
       - name: Deploys application
