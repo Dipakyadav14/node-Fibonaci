@@ -25,3 +25,13 @@ jobs:
           context: ./assignment/node-fibonacci
           push: true
           tags: dipakyadav780/my-node-app:latest
+          
+      - name: Deploy to AKS
+        uses: azure/k8s-deploy@v1
+        with:
+          azure_credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          azure_resource_group: assignment
+          kubernetes_cluster: test-fibonaci
+          command: |
+            kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml 
+            kubectl set image deployment/my-node-app-deployment my-node-app-container=dipakyadav780/my-node-app:latest   
