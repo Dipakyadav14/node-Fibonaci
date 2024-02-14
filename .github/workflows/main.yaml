@@ -5,6 +5,13 @@ on:
     branches:
       - main
 
+env:
+  CLUSTER_RESOURCE_GROUP: assignment
+  CLUSTER_NAME: test-fibonaci
+  NAMESPACE: test-fibo
+  CONTAINER_REGISTRY_SECRET: mysecretname
+
+
 jobs:
   build_and_push:
     runs-on: ubuntu-latest
@@ -25,13 +32,48 @@ jobs:
           context: ./assignment/node-fibonacci
           push: true
           tags: dipakyadav780/my-node-app:latest
-          
-      - name: Deploy to AKS
-        uses: azure/k8s-deploy@v1
+
+ cd:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    needs: build-and-push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up kubelogin for non-interactive login
+        uses: azure/use-kubelogin@v1
         with:
-          azure_credentials: ${{ secrets.AZURE_CREDENTIALS }}
-          azure_resource_group: assignment
-          kubernetes_cluster: test-fibonaci
-          command: |
-            kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml 
-            kubectl set image deployment/my-node-app-deployment my-node-app-container=dipakyadav780/my-node-app:latest   
+          kubelogin-version: 'v0.0.24'
+
+      # LOGIN AKS WITH CREDENTAIL
+      - name: Login Azure Kubernates
+        uses: Azure/aks-set-context@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: ${{ env.CLUSTER_RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          admin: 'true'
+          use-kubelogin: 'true'
+
+      - name: Bake deployment
+        uses: azure/k8s-bake@v2
+        with:
+          renderEngine: "helm"
+          helmChart: "./K8s/helm-poc/"
+          helm-version: "latest"
+        id: bake
+
+      - name: Deploys application
+        uses: Azure/k8s-deploy@v4
+        with:
+          action: deploy
+          namespace: ${{ env.NAMESPACE }}
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          images: |
+            ${{ secrets.DOCKER_USERNAME }}/my-node-app
+          imagepullsecrets: |
+            ${{ env.CONTAINER_REGISTRY_SECRET }}
+

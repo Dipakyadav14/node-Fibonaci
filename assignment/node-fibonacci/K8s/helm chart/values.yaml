@@ -1,9 +1,0 @@
-image:
-  repository: dipakyadav780/nodeimage:latest
-  tag: "latest"
-
-replicaCount: 2
-
-service:
-  name: my-node-app-service
-  port: 80
